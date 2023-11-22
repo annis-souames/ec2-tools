@@ -11,4 +11,4 @@ def create_instance(cfg=None):
         region_name=region,
     )
     print(client)
-    pass
+    return None
