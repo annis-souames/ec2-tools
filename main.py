@@ -1,64 +1,59 @@
-import argparse
-import boto3
+from manage import (
+    create_instance,
+    list_regions,
+    list_instances,
+    delete_instance,
+    get_status,
+)
+import typer
 
-def create_instance(ec2, ami_id, instance_type, key_name):
-    print("Creating EC2 instance...")
-    response = ec2.run_instances(
-        ImageId=ami_id,
-        InstanceType=instance_type,
-        KeyName=key_name,
-        MinCount=1,
-        MaxCount=1
-    )
-    instance_id = response['Instances'][0]['InstanceId']
-    print(f"Instance {instance_id} created successfully.")
+app = typer.Typer()
 
-def list_instances(ec2):
-    print("Listing EC2 instances...")
-    instances = ec2.describe_instances()
-    for reservation in instances['Reservations']:
-        for instance in reservation['Instances']:
-            print(f"ID: {instance['InstanceId']}, State: {instance['State']['Name']}")
 
-def terminate_instance(ec2, instance_id):
-    print(f"Terminating instance {instance_id}...")
-    ec2.terminate_instances(InstanceIds=[instance_id])
-    print(f"Instance {instance_id} terminated successfully.")
+@app.command("list-regions")
+def list_regions_command():
+    """List all EC2 instances."""
+    resp = list_regions()
+    print("Regions:", resp["regions"])
+    print("AZ list:", resp["zones"])
 
-def main():
-    parser = argparse.ArgumentParser(description="Manage EC2 instances")
-    parser.add_argument("--access-key", required=True, help="AWS Access Key ID")
-    parser.add_argument("--secret-key", required=True, help="AWS Secret Access Key")
-    parser.add_argument("--region", required=True, help="AWS Region")
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    create_parser = subparsers.add_parser("create", help="Create a new EC2 instance")
-    create_parser.add_argument("--ami-id", required=True, help="AMI ID")
-    create_parser.add_argument("--instance-type", required=True, help="Instance type")
-    create_parser.add_argument("--key-name", required=True, help="Key pair name")
+@app.command("list-instances")
+def list_instances_command(region: str):
+    """List all EC2 instances."""
+    resp = list_instances(region)
+    print(f"Found {len(resp)} instances in {region}:")
+    for inst in resp:
+        print(
+            "-- IP =",
+            inst["PrivateIpAddress"],
+            "| Type:",
+            inst["InstanceType"],
+            "| ID:",
+            inst["InstanceId"],
+        )
 
-    list_parser = subparsers.add_parser("list", help="List all EC2 instances")
 
-    terminate_parser = subparsers.add_parser("terminate", help="Terminate an EC2 instance")
-    terminate_parser.add_argument("instance_id", help="ID of the instance to terminate")
+@app.command("create")
+def create_command(template_path: str, region: str):
+    """Create a new EC2 instance."""
+    id = create_instance(cfg_path=template_path, region=region)
+    print(f"The instance {id} was created successfully.")
 
-    args = parser.parse_args()
 
-    ec2 = boto3.client(
-        'ec2',
-        aws_access_key_id=args.access_key,
-        aws_secret_access_key=args.secret_key,
-        region_name=args.region
-    )
+@app.command("delete")
+def delete_command(instance_id: str, region: str):
+    """Delete a specific EC2 instance."""
+    delete_instance(instance_id=instance_id, region=region)
+    print(f"Instance {instance_id} was deleted successfully.")
 
-    if args.command == "create":
-        create_instance(ec2, args.ami_id, args.instance_type, args.key_name)
-    elif args.command == "list":
-        list_instances(ec2)
-    elif args.command == "terminate":
-        terminate_instance(ec2, args.instance_id)
-    else:
-        print("Invalid command. Use --help for usage information.")
+
+@app.command("status")
+def status(instance_id: str, region: str):
+    """Get status specific EC2 instance."""
+    status = get_status(instance_id, region)
+    print(f"Status of {instance_id}: {status}")
+
 
 if __name__ == "__main__":
-    main()
+    app()

@@ -1,0 +1,5 @@
+{
+    "ami": "ami-09a81b370b76de6a2",
+    "volume": 20,
+    "type": "t2.nano"
+}

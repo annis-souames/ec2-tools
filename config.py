@@ -11,3 +11,8 @@ def get_access_token():
 
 def get_secret():
     return creds["secret"]
+
+
+def get_EC2_config(path: str):
+    ec2_cfg = json.loads(open(path).read())
+    return ec2_cfg
